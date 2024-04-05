@@ -32,28 +32,56 @@
  */
 
 /**
- * Device driver API for W25Qx main memory.
+ * Driver data structure for W25Qx security registers.
  */
-extern const struct nvmApi W25Qx_api;
+struct w25qSecRegDevice
+{
+    const struct nvmOps  *ops;         ///< Device operations
+    const struct nvmInfo *info;        ///< Device info
+    const size_t          size;        ///< Device size
+    const uint32_t        baseAddr;    ///< Register base address
+};
 
 /**
- * Device driver API for W25Qx security registers.
+ * Device driver and information block for W25Qx main memory.
  */
-extern const struct nvmApi W25Qx_secReg_api;
-
+extern const struct nvmOps  W25Qx_ops;
+extern const struct nvmInfo W25Qx_info;
 
 /**
  *  Instantiate an W25Qx nonvolatile memory device.
  *
  * @param name: device name.
- * @param driver: device driver API.
+ * @param sz: memory size, in bytes.
  */
-#define W25Qx_DEVICE_DEFINE(name, driver) \
-struct nvmDevice name =                   \
-{                                         \
-    .config = NULL,                       \
-    .priv   = NULL,                       \
-    .api    = &driver                     \
+#define W25Qx_DEVICE_DEFINE(name, sz) \
+struct nvmDevice name =               \
+{                                     \
+    .ops  = &W25Qx_ops,               \
+    .info = &W25Qx_info,              \
+    .size = sz                        \
+};
+
+/**
+ * Device driver and information block for W25Qx security registers area.
+ */
+extern const struct nvmOps  W25Qx_secReg_ops;
+extern const struct nvmInfo W25Qx_secReg_info;
+
+/**
+ *  Instantiate an W25Qx security register memory device.
+ *
+ * @param name: device name.
+ * @param base: security register base address.
+ * @param sz: memory size, in bytes.
+ */
+#define W25Qx_SECREG_DEFINE(name, base, sz) \
+struct w25qSecRegDevice name =              \
+{                                           \
+    .ops      = &W25Qx_secReg_ops,          \
+    .info     = &W25Qx_secReg_info,         \
+    .size     = sz,                         \
+    .baseAddr = base                        \
 };
 
 /**
