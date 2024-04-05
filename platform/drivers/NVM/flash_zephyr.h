@@ -27,11 +27,22 @@
  * Wrapper interface for the Zephyr RTOS flash memory device driver.
  */
 
+
+/**
+ * Driver data structure for Zephyr RTOS flash memory device.
+ */
+struct zephyrFlashDevice
+{
+    const struct nvmOps  *ops;         ///< Device operations
+    const struct nvmInfo *info;        ///< Device info
+    const size_t          size;        ///< Device size
+    const struct device  *device;      ///< Underlying Zephyr RTOS device driver
+};
+
 /**
  *  Device driver API for Zephyr RTOS flash memory.
  */
-extern const struct nvmApi zephyr_flash_api;
-
+extern const struct nvmOps zephyr_flash_ops;
 
 /**
  * Instantiate a nonvolatile memory device based on Zephyr RTOS flash device
@@ -39,14 +50,25 @@ extern const struct nvmApi zephyr_flash_api;
  *
  * @param name: device name.
  * @param alias: devicetree alias of the flash device.
+ * @param sz: memory size, in bytes.
  */
-#define ZEPHYR_FLASH_DEVICE_DEFINE(name, alias) \
-static struct nvmParams flash_params_##name;    \
-static const struct nvmDevice name =            \
-{                                               \
-    .config = DEVICE_DT_GET(DT_ALIAS(alias)),   \
-    .priv   = &flash_params_##name,             \
-    .api    = &zephyr_flash_api                 \
+#define ZEPHYR_FLASH_DEVICE_DEFINE(name, alias, sz) \
+static struct nvmInfo nvm_devInfo_##name;           \
+static const struct zephyrFlashDevice name =        \
+{                                                   \
+    .ops    = &zephyr_flash_ops,                    \
+    .info   = &nvm_devInfo_##name,                  \
+    .size   = sz,                                   \
+    .device = DEVICE_DT_GET(DT_ALIAS(alias))        \
 };
+
+
+/**
+ * Initialize a Zephyr RTOS flash device driver instance.
+ *
+ * @param dev: device handle.
+ * @return zero on success, a negative error code otherwise.
+ */
+int zephirFlash_init(const struct zephyrFlashDevice* dev);
 
 #endif /* FLASH_ZEPHYR_H */

@@ -23,23 +23,20 @@
 #include <interfaces/nvmem.h>
 #include "flash_zephyr.h"
 
-ZEPHYR_FLASH_DEVICE_DEFINE(extFlash, flash);
+ZEPHYR_FLASH_DEVICE_DEFINE(eflash, flash, FIXED_PARTITION_SIZE(storage_partition));
 
-static const struct nvmArea areas[] =
+static const struct nvmDescriptor nvMemory =
 {
-    {
-        .name       = "External flash",
-        .dev        = &extFlash,
-        .startAddr  = FIXED_PARTITION_OFFSET(storage_partition),
-        .size       = FIXED_PARTITION_SIZE(storage_partition),
-        .partitions = NULL
-    }
+    .name       = "External flash",
+    .dev        = (const struct nvmDevice *) &eflash,
+    .partNum    = 0,
+    .partitions = NULL
 };
 
 
 void nvm_init()
 {
-
+    zephirFlash_init(&eflash);
 }
 
 void nvm_terminate()
@@ -47,11 +44,12 @@ void nvm_terminate()
 
 }
 
-size_t nvm_getMemoryAreas(const struct nvmArea **list)
+const struct nvmDescriptor *nvm_getDesc(const size_t index)
 {
-    *list = &areas[0];
+    if(index > 0)
+        return NULL;
 
-    return (sizeof(areas) / sizeof(struct nvmArea));
+    return &nvMemory;
 }
 
 void nvm_readCalibData(void *buf)
