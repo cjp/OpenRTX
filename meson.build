@@ -66,7 +66,9 @@ openrtx_src = ['openrtx/src/core/state.c',
                'openrtx/src/protocols/M17/M17Demodulator.cpp',
                'openrtx/src/protocols/M17/M17FrameEncoder.cpp',
                'openrtx/src/protocols/M17/M17FrameDecoder.cpp',
-               'openrtx/src/protocols/M17/M17LinkSetupFrame.cpp']
+               'openrtx/src/protocols/M17/M17LinkSetupFrame.cpp',
+               'platform/drivers/SPI/spi_bitbang.c',
+               'platform/drivers/NVM/eeep.c']
 
 openrtx_inc = ['openrtx/include',
                'openrtx/include/rtx',
@@ -433,6 +435,32 @@ mod17_inc += openrtx_inc + stm32f405_inc + miosix_cm4f_inc
 mod17_def += openrtx_def + stm32f405_def + miosix_cm4f_def
 
 ##
+## Connect Systems CS760
+##
+cs760_src = ['platform/drivers/NVM/nvmem_CS760.c',
+             'platform/drivers/NVM/W25Qx.c',
+             'platform/drivers/baseband/AK2365A.c',
+             'platform/drivers/baseband/SKY72310.c',
+             'platform/drivers/baseband/HR_Cx000.cpp',
+             'platform/drivers/baseband/HR_C6000_CS760.cpp',
+             'platform/drivers/baseband/radio_CS760.cpp',
+             'platform/drivers/stubs/cps_io_stub.c',
+             'platform/drivers/keyboard/keyboard_CS760.c',
+             'platform/drivers/display/ST7735R_CS760.c',
+             'platform/drivers/backlight/backlight_CS760.c',
+             'platform/drivers/audio/audio_CS760.cpp',
+             'platform/drivers/audio/Cx000_dac.cpp',
+             'platform/targets/CS760/gpio_shiftReg.c',
+             'platform/targets/CS760/platform.c']
+
+cs760_inc = ['platform/targets/CS760']
+cs760_def = {'PLATFORM_CS760': '', 'timegm': 'mktime'}
+
+cs760_src += openrtx_src + stm32f405_src + miosix_cm4f_src + ui_src_default
+cs760_inc += openrtx_inc + stm32f405_inc + miosix_cm4f_inc
+cs760_def += openrtx_def + stm32f405_def + miosix_cm4f_def
+
+##
 ## -------------------------- Compilation arguments ----------------------------
 ##
 
@@ -524,6 +552,15 @@ foreach k, v : mod17_def
     mod17_args += '-D@0@'.format(k)
   else
     mod17_args += '-D@0@=@1@'.format(k, v)
+  endif
+endforeach
+
+cs760_args = []
+foreach k, v : cs760_def
+  if v == ''
+    cs760_args += '-D@0@'.format(k)
+  else
+    cs760_args += '-D@0@=@1@'.format(k, v)
   endif
 endforeach
 
@@ -623,6 +660,16 @@ ttwrplus_opts = {
   'link_args'          : [],
 }
 
+cs760_opts = {
+  'sources'            : cs760_src,
+  'include_directories': cs760_inc,
+  'dependencies'       : [codec2_dep],
+  'c_args'             : cs760_args,
+  'cpp_args'           : cs760_args,
+  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_Mod17.ld',
+                          '-Wl,--print-memory-usage']
+}
+
 ##
 ## ---------------------------- Compilation targets ----------------------------
 ##
@@ -688,6 +735,13 @@ targets = [
   {
     'name'     : 'ttwrplus',
     'opts'     : ttwrplus_opts,
+    'flashable': true,
+    'wrap'     : ' ',
+    'load_addr': ' '
+  },
+  {
+    'name'     : 'cs760',
+    'opts'     : cs760_opts,
     'flashable': true,
     'wrap'     : ' ',
     'load_addr': ' '
@@ -801,7 +855,7 @@ foreach t : targets
                       command : [gd77_loader, '-f', '@INPUT@', '-m', t['wrap']])
 
       # Module17 also uses dfu-tool for flashing
-      elif name == 'openrtx_mod17'
+      elif name == 'openrtx_mod17' or name == 'openrtx_cs760'
 
         # Wrap target for Module17 for consistency, same output as bin target
         custom_target(name+'_wrap',

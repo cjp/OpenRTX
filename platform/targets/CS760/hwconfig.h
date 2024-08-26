@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Silvano Seva IU2KWO                      *
- *                            and Niccolò Izzo IU2KIN                      *
+ *   Copyright (C) 2024 by Silvano Seva IU2KWO                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -16,53 +15,48 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef SKY73210_H
-#define SKY73210_H
+#ifndef HWCONFIG_H
+#define HWCONFIG_H
 
-#include <peripherals/gpio.h>
-#include <peripherals/spi.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include <peripherals/adc.h>
+#include <stm32f4xx.h>
+#include "pinmap.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * SKY73210 device data.
- */
-struct sky73210
+enum AdcChannels
 {
-    const struct spiDevice *spi;      ///< SPI bus device driver
-    const struct gpioPin   cs;        ///< Chip select gpio
-    const uint32_t         refClk;    ///< Reference clock frequency, in Hz
+    ADC_VOL_CH  = 15,  /* PC5  */
+    ADC_VBAT_CH = 14,  /* PC14 */
+    ADC_MIC_CH  = 3,   /* PA3  */
+    ADC_RSSI_CH = 8,   /* PB0  */
+    ADC_RTX_CH  = 7,   /* PA7  */
 };
 
-/**
- * Initialise the PLL.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_init(const struct sky73210 *dev);
+extern const struct Adc adc1;
+extern const struct gpioDev extGpio;
 
-/**
- * Terminate PLL driver.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_terminate(const struct sky73210 *dev);
 
-/**
- * Change VCO frequency.
- *
- * @param dev: pointer to device data.
- * @param freq: new VCO frequency, in Hz.
- * @param clkDiv: reference clock division factor.
- */
-void SKY73210_setFrequency(const struct sky73210 *dev, const uint32_t freq, uint8_t clkDiv);
+/* Screen dimensions */
+#define CONFIG_SCREEN_WIDTH 160
+#define CONFIG_SCREEN_HEIGHT 128
+
+/* Screen pixel format */
+#define CONFIG_PIX_FMT_RGB565
+
+/* Screen has adjustable brightness */
+#define CONFIG_SCREEN_BRIGHTNESS
+
+/* Battery type */
+#define CONFIG_BAT_LIPO_2S
+
+/* Device supports M17 mode */
+#define CONFIG_M17
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SKY73210_H */
+#endif /* HWCONFIG_H */

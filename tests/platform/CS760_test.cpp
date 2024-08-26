@@ -1,6 +1,8 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Silvano Seva IU2KWO                      *
- *                            and Niccolò Izzo IU2KIN                      *
+ *   Copyright (C) 2020 - 2023 by Federico Amedeo Izzo IU2NUO,             *
+ *                                Niccolò Izzo IU2KIN                      *
+ *                                Frederik Saraci IU2NRO                   *
+ *                                Silvano Seva IU2KWO                      *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -16,53 +18,50 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef SKY73210_H
-#define SKY73210_H
-
+#include <stdio.h>
+#include <interfaces/platform.h>
+#include <interfaces/audio.h>
+#include <interfaces/delays.h>
 #include <peripherals/gpio.h>
-#include <peripherals/spi.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include <M17/M17Modulator.hpp>
+#include <M17/M17Prbs.hpp>
+#include "USART3.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * SKY73210 device data.
- */
-struct sky73210
+static void fill(M17::frame_t& frame, M17::PRBS9& prbs)
 {
-    const struct spiDevice *spi;      ///< SPI bus device driver
-    const struct gpioPin   cs;        ///< Chip select gpio
-    const uint32_t         refClk;    ///< Reference clock frequency, in Hz
-};
+    for(size_t i = 0; i < frame.size(); i++)
+    {
+        uint8_t byte = 0;
+        for(size_t j = 0; j < 8; j++)
+            byte |= prbs.generateBit() << j;
 
-/**
- * Initialise the PLL.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_init(const struct sky73210 *dev);
-
-/**
- * Terminate PLL driver.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_terminate(const struct sky73210 *dev);
-
-/**
- * Change VCO frequency.
- *
- * @param dev: pointer to device data.
- * @param freq: new VCO frequency, in Hz.
- * @param clkDiv: reference clock division factor.
- */
-void SKY73210_setFrequency(const struct sky73210 *dev, const uint32_t freq, uint8_t clkDiv);
-
-#ifdef __cplusplus
+        frame[i] = byte;
+    }
 }
-#endif
 
-#endif /* SKY73210_H */
+int main()
+{
+    // platform_init();
+    // usart3_init(115200);
+    audio_init();
+
+    M17::PRBS9 prbs;
+
+    M17::frame_t frame;
+    // frame.fill(0x77);
+    fill(frame, prbs);
+
+    M17::M17Modulator mod;
+    mod.init();
+    mod.start();
+    // mod.sendPreamble();
+    mod.sendFrame(frame);
+
+    while(1)
+    {
+        fill(frame, prbs);
+        mod.sendFrame(frame);
+    }
+
+    return 0;
+}

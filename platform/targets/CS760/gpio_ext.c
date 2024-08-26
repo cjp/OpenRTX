@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Silvano Seva IU2KWO                      *
- *                            and Niccolò Izzo IU2KIN                      *
+ *   Copyright (C) 2024 by Silvano Seva IU2KWO                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -16,53 +15,65 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef SKY73210_H
-#define SKY73210_H
-
+#include <interfaces/delays.h>
 #include <peripherals/gpio.h>
-#include <peripherals/spi.h>
-#include <stdint.h>
-#include <stdbool.h>
+#include <pinmap.h>
+#include <stdio.h>
+#include "gpio_ext.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-/**
- * SKY73210 device data.
- */
-struct sky73210
+uint32_t externalGpios;
+
+void gpioExt_init()
 {
-    const struct spiDevice *spi;      ///< SPI bus device driver
-    const struct gpioPin   cs;        ///< Chip select gpio
-    const uint32_t         refClk;    ///< Reference clock frequency, in Hz
-};
+    externalGpios = 0;
 
-/**
- * Initialise the PLL.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_init(const struct sky73210 *dev);
+    gpio_setMode(GPIOEXT_CLK, OUTPUT);
+    gpio_setMode(GPIOEXT_DAT, OUTPUT);
+    gpio_setMode(GPIOEXT_STR, OUTPUT);
+    gpio_setOutputSpeed(GPIOEXT_CLK, HIGH);
+    gpio_setOutputSpeed(GPIOEXT_DAT, HIGH);
+    gpio_setOutputSpeed(GPIOEXT_STR, HIGH);
 
-/**
- * Terminate PLL driver.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_terminate(const struct sky73210 *dev);
+    gpio_clearPin(GPIOEXT_CLK);
+    gpio_clearPin(GPIOEXT_DAT);
+    gpio_clearPin(GPIOEXT_STR);
 
-/**
- * Change VCO frequency.
- *
- * @param dev: pointer to device data.
- * @param freq: new VCO frequency, in Hz.
- * @param clkDiv: reference clock division factor.
- */
-void SKY73210_setFrequency(const struct sky73210 *dev, const uint32_t freq, uint8_t clkDiv);
+    gpioExt_update();
+}
+
+void gpioExt_terminate()
+{
+    gpio_setMode(GPIOEXT_CLK, INPUT);
+    gpio_setMode(GPIOEXT_DAT, INPUT);
+    gpio_setMode(GPIOEXT_STR, INPUT);
+}
+
+void gpioExt_update()
+{
+    __disable_irq();
+
+    gpio_clearPin(GPIOEXT_STR);
+
+    uint32_t tmp = externalGpios;
+    for(uint8_t i = 0; i < 24; i++)
+    {
+        gpio_clearPin(GPIOEXT_CLK);
+
+        if((tmp & 0x800000) != 0)
+            gpio_setPin(GPIOEXT_DAT);
+        else
+            gpio_clearPin(GPIOEXT_DAT);
+
+        tmp <<= 1;
+        gpio_setPin(GPIOEXT_CLK);
+    }
+
+    gpio_setPin(GPIOEXT_STR);
+
+    __enable_irq();
+}
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* SKY73210_H */

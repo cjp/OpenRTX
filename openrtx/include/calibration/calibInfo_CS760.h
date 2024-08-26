@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Silvano Seva IU2KWO                      *
- *                            and Niccolò Izzo IU2KIN                      *
+ *   Copyright (C) 2024 by Silvano Seva IU2KWO                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -16,53 +15,29 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef SKY73210_H
-#define SKY73210_H
+#ifndef CALIBINFO_CS760_H
+#define CALIBINFO_CS760_H
 
-#include <peripherals/gpio.h>
-#include <peripherals/spi.h>
+#include <datatypes.h>
 #include <stdint.h>
-#include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
- * SKY73210 device data.
+ * \brief Calibration data for Connect Systems CS760.
  */
-struct sky73210
+struct CS760Calib
 {
-    const struct spiDevice *spi;      ///< SPI bus device driver
-    const struct gpioPin   cs;        ///< Chip select gpio
-    const uint32_t         refClk;    ///< Reference clock frequency, in Hz
+    uint32_t txCalFreq[8];       // 0x000
+    uint32_t rxCalFreq[8];       // 0x024
+    uint8_t  rxSensitivity[8];   // 0x044
+    uint8_t  txHighPwr[8];       // 0x06C
+    uint8_t  txMiddlePwr[8];     // 0x074
+    uint8_t  mskFreqOffset[8];   // 0x0B4
+    uint8_t  txDigitalPathI[8];  // 0x0BC
+    uint8_t  txDigitalPathQ[8];  // 0x0C4
+    uint8_t  txAnalogPathI[8];   // 0x0CC
+    uint8_t  txAnalogPathQ[8];   // 0x0D4
+    uint8_t  errorRate[8];       // 0x0DC
 };
 
-/**
- * Initialise the PLL.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_init(const struct sky73210 *dev);
-
-/**
- * Terminate PLL driver.
- *
- * @param dev: pointer to device data.
- */
-void SKY73210_terminate(const struct sky73210 *dev);
-
-/**
- * Change VCO frequency.
- *
- * @param dev: pointer to device data.
- * @param freq: new VCO frequency, in Hz.
- * @param clkDiv: reference clock division factor.
- */
-void SKY73210_setFrequency(const struct sky73210 *dev, const uint32_t freq, uint8_t clkDiv);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* SKY73210_H */
+#endif /* CALIBINFO_CS760_H */

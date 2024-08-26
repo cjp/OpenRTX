@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Silvano Seva IU2KWO                      *
- *                            and Niccolò Izzo IU2KIN                      *
+ *   Copyright (C) 2024 by Silvano Seva IU2KWO                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -16,8 +15,8 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef SKY73210_H
-#define SKY73210_H
+#ifndef AK2365A_H
+#define AK2365A_H
 
 #include <peripherals/gpio.h>
 #include <peripherals/spi.h>
@@ -28,41 +27,50 @@
 extern "C" {
 #endif
 
-/**
- * SKY73210 device data.
- */
-struct sky73210
+enum AK2365A_BPF
 {
-    const struct spiDevice *spi;      ///< SPI bus device driver
-    const struct gpioPin   cs;        ///< Chip select gpio
-    const uint32_t         refClk;    ///< Reference clock frequency, in Hz
+    AK2365A_BPF_7p5 = 4,    ///< BAND = 1, BPF_BW = 00
+    AK2365A_BPF_6   = 0,    ///< BAND = 0, BPF_BW = 00
+    AK2365A_BPF_4p5 = 1,    ///< BAND = 0, BPF_BW = 01
+    AK2365A_BPF_3   = 2,    ///< BAND = 0, BPF_BW = 10
+    AK2365A_BPF_2   = 3,    ///< BAND = 0, BPF_BW = 11
 };
 
 /**
- * Initialise the PLL.
- *
- * @param dev: pointer to device data.
+ * AK2365A device data.
  */
-void SKY73210_init(const struct sky73210 *dev);
+struct ak2365a
+{
+    const struct spiDevice *spi;   ///< SPI bus device driver
+    const struct gpioPin   cs;     ///< Chip select gpio
+    const struct gpioPin   res;    ///< Reset gpio
+};
+
 
 /**
- * Terminate PLL driver.
+ * Initialise the FM detector IC.
  *
  * @param dev: pointer to device data.
  */
-void SKY73210_terminate(const struct sky73210 *dev);
+void AK2365A_init(const struct ak2365a *dev);
 
 /**
- * Change VCO frequency.
+ * Terminate the driver and set the IC in reset state.
  *
  * @param dev: pointer to device data.
- * @param freq: new VCO frequency, in Hz.
- * @param clkDiv: reference clock division factor.
  */
-void SKY73210_setFrequency(const struct sky73210 *dev, const uint32_t freq, uint8_t clkDiv);
+void AK2365A_terminate(const struct ak2365a *dev);
+
+/**
+ * Set the bandwidth of the internal IF filter.
+ *
+ * @param dev: pointer to device data.
+ * @param bw: bandwidth.
+ */
+void AK2365A_setFilterBandwidth(const struct ak2365a *dev, const uint8_t bw);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SKY73210_H */
+#endif /* AK2365A_H */

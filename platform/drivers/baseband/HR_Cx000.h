@@ -21,28 +21,11 @@
 #ifndef HRCx000_H
 #define HRCx000_H
 
+#include <peripherals/gpio.h>
+#include <peripherals/spi.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * Check if "user" SPI bus, on some platforms shared between the baseband and
- * other chips, is in use by the HR_Cx000 driver. This function is callable
- * either from C or C++ sources.
- *
- * WARNING: this function is NOT thread safe! A proper critical section has to
- * be set up to ensure it is accessed by one task at a time.
- *
- * @return true if SPI lines are being used by this driver.
- */
-bool Cx000_uSpiBusy();
-
-#ifdef __cplusplus
-}
 
 /**
  * Configuration options for analog FM mode.
@@ -67,19 +50,19 @@ enum class TxAudioSource
 };
 
 /**
- * Generic driver for HR_C5000/HR_C6000 "baseband" chip.
- *
- *
- * WARNING: on some MDx devices the PLL and DMR chips share the SPI MOSI line,
- * thus particular care has to be put to avoid them stomping reciprocally.
- * This driver does not make any check if a SPI transfer is already in progress,
- * deferring the correct bus management to higher level modules. However,
- * a function returning true if the bus is currently in use by this driver is
- * provided.
+ * HR_Cx000 hardware interface descriptor.
  */
+struct Cx000Interface
+{
+    const struct spiDevice *uSpi;   ///< Device driver for "user" SPI
+    const struct gpioPin    uCs;    ///< Chip select for "user" SPI
+};
 
 class ScopedChipSelect;
 
+/**
+ * Generic driver for HR_C5000/HR_C6000 "baseband" chip.
+ */
 template< class M >
 class HR_Cx000
 {
@@ -88,9 +71,9 @@ public:
     /**
      * \return a reference to the instance of the AT1846S class (singleton).
      */
-    static HR_Cx000& instance()
+    static HR_Cx000& instance(const struct Cx000Interface *dev)
     {
-        static HR_Cx000< M > Cx000;
+        static HR_Cx000< M > Cx000(dev);
         return Cx000;
     }
 
@@ -210,16 +193,30 @@ public:
         return readReg(M::CONFIG, reg);
     }
 
+    /**
+     * Send audio to the DAC FIFO for playback via the "OpenMusic" mode.
+     * This function assumes that audio chunk is composed of 64 bytes.
+     *
+     * @param audio: pointer to a 64 byte audio chunk.
+     */
+    inline void sendAudio(const uint8_t *audio)
+    {
+        ScopedChipSelect cs(dev);
+
+        uint8_t cmd[2];
+        cmd[0] = 0x03;
+        cmd[1] = 0x00;
+
+        spi_send(dev->uSpi, cmd, 2);
+        spi_send(dev->uSpi, audio, 64);
+    }
+
 private:
 
     /**
      * Constructor.
      */
-    HR_Cx000()
-    {
-        // Being a singleton class, uSPI is initialised only once.
-        uSpi_init();
-    }
+    HR_Cx000(const struct Cx000Interface *dev) : dev(dev) { }
 
     /**
      * Helper function for register writing.
@@ -230,10 +227,14 @@ private:
      */
     void writeReg(const M opMode, const uint8_t addr, const uint8_t value)
     {
-        ScopedChipSelect cs;
-        (void) uSpi_sendRecv(static_cast< uint8_t >(opMode));
-        (void) uSpi_sendRecv(addr);
-        (void) uSpi_sendRecv(value);
+        uint8_t data[3];
+
+        data[0] = static_cast< uint8_t >(opMode);
+        data[1] = addr;
+        data[2] = value;
+
+        ScopedChipSelect cs(dev);
+        spi_send(dev->uSpi, data, 3);
     }
 
     /**
@@ -245,10 +246,17 @@ private:
      */
     uint8_t readReg(const M opMode, const uint8_t addr)
     {
-        ScopedChipSelect cs;
-        (void) uSpi_sendRecv(static_cast< uint8_t >(opMode) | 0x80);
-        (void) uSpi_sendRecv(addr);
-        return uSpi_sendRecv(0x00);
+        uint8_t cmd[3];
+        uint8_t ret[3];
+
+        cmd[0] = 0x80 | static_cast< uint8_t >(opMode);
+        cmd[1] = addr;
+        cmd[2] = 0x00;
+
+        ScopedChipSelect cs(dev);
+        spi_transfer(dev->uSpi, cmd, 3, ret, 3);
+
+        return ret[2];
     }
 
     /**
@@ -260,26 +268,11 @@ private:
      */
     void sendSequence(const uint8_t *seq, const size_t len)
     {
-        ScopedChipSelect cs;
-        for(size_t i = 0; i < len; i++)
-        {
-            (void) uSpi_sendRecv(seq[i]);
-        }
+        ScopedChipSelect cs(dev);
+        spi_send(dev->uSpi, seq, len);
     }
 
-    /**
-     * Initialise the low-level driver which manages "user" SPI interface, that
-     * is the one used to configure the chipset functionalities.
-     */
-    void uSpi_init();
-
-    /**
-     * Transfer one byte across the "user" SPI interface.
-     *
-     * @param value: value to be sent.
-     * @return incoming byte from the baseband chip.
-     */
-    uint8_t uSpi_sendRecv(const uint8_t value);
+    const struct Cx000Interface *dev;
 };
 
 /**
@@ -299,19 +292,22 @@ public:
 
     /**
      * Constructor.
-     * When called it brings the  HR_C5000/HR_C6000 chip select to logical low,
-     * selecting it.
+     * When called it acquires exclusive ownership on the "user" SPI bus and
+     * brings the  HR_C5000/HR_C6000 chip select to logical low.
+     *
+     * @param dev: pointer to device interface.
      */
-    ScopedChipSelect();
+    ScopedChipSelect(const struct Cx000Interface *dev);
 
     /**
      * Destructor.
      * When called it brings the  HR_C5000/HR_C6000 chip select to logical high,
-     * deselecting it.
+     * and releases exclusive ownership on the "user" SPI bus.
      */
     ~ScopedChipSelect();
-};
 
-#endif // __cplusplus
+private:
+    const struct Cx000Interface *dev;
+};
 
 #endif // HRCx000_H

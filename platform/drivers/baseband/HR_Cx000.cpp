@@ -26,11 +26,6 @@
 #include "HR_C5000.h"
 #include "HR_C6000.h"
 
-bool Cx000_uSpiBusy()
-{
-    return (gpio_readPin(DMR_CS) == 0) ? true : false;
-}
-
 template <>
 void HR_Cx000< C5000_SpiOpModes >::setDacGain(int8_t gain)
 {
@@ -120,16 +115,17 @@ void HR_Cx000< C6000_SpiOpModes >::setInputGain(int8_t value)
     writeReg(C6000_SpiOpModes::CONFIG, 0xE4, regValue);
 }
 
-ScopedChipSelect::ScopedChipSelect()
+ScopedChipSelect::ScopedChipSelect(const struct Cx000Interface *dev) : dev(dev)
 {
-    gpio_clearPin(DMR_CS);
+    spi_acquire(dev->uSpi);
+    gpioPin_clear(&dev->uCs);
 }
 
 ScopedChipSelect::~ScopedChipSelect()
 {
     delayUs(2);
-    gpio_setPin(DMR_CS);
-    delayUs(2);
+    gpioPin_set(&dev->uCs);
+    spi_release(dev->uSpi);
 }
 
 FmConfig operator |(FmConfig lhs, FmConfig rhs)

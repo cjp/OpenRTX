@@ -1,6 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Silvano Seva IU2KWO                      *
- *                            and Niccolò Izzo IU2KIN                      *
+ *   Copyright (C) 2024 by Silvano Seva IU2KWO                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -16,53 +15,43 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef SKY73210_H
-#define SKY73210_H
+#ifndef Cx000_DAC_H
+#define Cx000_DAC_H
 
-#include <peripherals/gpio.h>
-#include <peripherals/spi.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <interfaces/audio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * SKY73210 device data.
+ * Driver to use the HR_Cx000 internal DAC as audio output stream device.
+ * Input data format is signed 16-bit and only a single instance of this driver
+ * is allowed.
  */
-struct sky73210
-{
-    const struct spiDevice *spi;      ///< SPI bus device driver
-    const struct gpioPin   cs;        ///< Chip select gpio
-    const uint32_t         refClk;    ///< Reference clock frequency, in Hz
-};
+
+extern const struct audioDriver Cx000_dac_audio_driver;
 
 /**
- * Initialise the PLL.
- *
- * @param dev: pointer to device data.
+ * Initialize the driver.
  */
-void SKY73210_init(const struct sky73210 *dev);
+void Cx000dac_init();
 
 /**
- * Terminate PLL driver.
- *
- * @param dev: pointer to device data.
+ * Shutdown the driver.
  */
-void SKY73210_terminate(const struct sky73210 *dev);
+void Cx000dac_terminate();
 
 /**
- * Change VCO frequency.
- *
- * @param dev: pointer to device data.
- * @param freq: new VCO frequency, in Hz.
- * @param clkDiv: reference clock division factor.
+ * Driver task function, to be called at least once every 4ms to ensure a
+ * proper operation.
  */
-void SKY73210_setFrequency(const struct sky73210 *dev, const uint32_t freq, uint8_t clkDiv);
+void Cx000dac_task();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SKY73210_H */
+#endif /* Cx000_DAC_H */

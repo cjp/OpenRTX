@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Federico Amedeo Izzo IU2NUO,             *
+ *   Copyright (C) 2020 - 2023 by Federico Amedeo Izzo IU2NUO,             *
  *                                Niccolò Izzo IU2KIN                      *
  *                                Frederik Saraci IU2NRO                   *
  *                                Silvano Seva IU2KWO                      *
@@ -18,32 +18,49 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef THREADS_H
-#define THREADS_H
+#include <stdio.h>
+#include <string.h>
+#include <interfaces/platform.h>
+#include <interfaces/delays.h>
+#include <posix_file.h>
+#include <nvmem_access.h>
+#include <eeep.h>
 
-#include <stddef.h>
+uint8_t data[32];
 
-/**
- * Threads' stack sizes
- */
-#define UI_THREAD_STKSIZE     2048
-#define RTX_THREAD_STKSIZE    512
-#define CODEC2_THREAD_STKSIZE 16384
-#define AUDIO_THREAD_STKSIZE  512
 
-/**
- * Thread priority levels, UNIX-like: lower level, higher thread priority
- */
-#ifdef _MIOSIX
-#define THREAD_PRIO_RT      0
-#define THREAD_PRIO_HIGH    1
-#define THREAD_PRIO_NORMAL  2
-#define THREAD_PRIO_LOW     3
-#endif
+int main()
+{
+    platform_init();
 
-/**
- * Spawn all the threads for the various functionalities.
- */
-void create_threads();
+    // for(uint8_t i = 0; i < )
+    memset(data, 0x55, sizeof(data));
+    data[31] = 1;
+    nvm_write(1, -1, 0x00, data, sizeof(data));
 
-#endif /* THREADS_H */
+    memset(data, 0xaa, sizeof(data));
+    data[31] = 2;
+    nvm_write(1, -1, 0x01, data, sizeof(data));
+
+    memset(data, 0x55, sizeof(data));
+    data[31] = 3;
+    nvm_write(1, -1, 0x00, data, sizeof(data));
+
+    memset(data, 0xaa, sizeof(data));
+    data[31] = 4;
+    nvm_write(1, -1, 0x01, data, sizeof(data));
+
+    memset(data, 0x55, sizeof(data));
+    data[31] = 5;
+    nvm_write(1, -1, 0x00, data, sizeof(data));
+
+    memset(data, 0xbb, sizeof(data));
+    nvm_write(1, -1, 0x01, data, sizeof(data));
+
+    memset(data, 0x00, sizeof(data));
+    nvm_read(1, -1, 0x00, data, sizeof(data));
+    printf("%02x %02x\n", data[0], data[31]);
+
+
+    return 0;
+}
